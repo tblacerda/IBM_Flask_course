@@ -1,37 +1,54 @@
-''' Executing this function initiates the application of sentiment
-    analysis to be executed over the Flask channel and deployed on
-    localhost:5000.
-'''
-from flask import Flask, render_template, request
-from SentimentAnalysis.sentiment_analysis import sentiment_analyzer
-app = Flask("Sentiment Analyzer")
+"""
+Flask web server for the Emotion Detection application.
+Provides routes for the home page and emotion analysis using the EmotionDetection package.
+"""
+from flask import Flask, request, render_template
+from EmotionDetection import emotion_detector
 
-@app.route("/sentimentAnalyzer")
-def sent_analyzer():
-    ''' This code receives the text from the HTML interface and 
-        runs sentiment analysis over it using sentiment_analysis()
-        function. The output returned shows the label and its confidence 
-        score for the provided text.
-    '''
-    text_to_analyze = request.args.get('textToAnalyze')
-    # Pass the text to the sentiment_analyzer function and store the response
-    response = sentiment_analyzer(text_to_analyze)
-    # Extract the label and score from the response
-    label = response['label']
-    score = response['score']
-    # Return a formatted string with the sentiment label and score
-    if label is None:
-        return "Invalid input! Try Again!"
-    else:
-        return "The given text has been identified as {} with a score of {}.".format(label.split('_')[1], score)
+app = Flask(__name__)
 
+# Home page (renders index.html that is already provided in templates/)
 @app.route("/")
-def render_index_page():
-    ''' This function initiates the rendering of the main application
-        page over the Flask channel
-    '''
-    return render_template('index.html')
+def index():
+    """Render the home page (index.html)."""
+    return render_template("index.html")
+
+
+# Emotion detection endpoint
+@app.route("/emotionDetector", methods=["GET"])
+def detect_emotion():
+    """Detect the emotion of a text provided as a query parameter.
+    Query Parameter:
+        textToAnalyze (str): Text to analyze for emotions.
+    Returns:
+        str: Formatted string with emotion scores and dominant emotion, or
+             an error message if input is invalid.
+    """
+    # get statement from query parameter (?text=...)
+    text_to_analyse = request.args.get("textToAnalyze", "").strip()
+
+    if not text_to_analyse:
+        return "Invalid text! Please try again!"
+
+    # run the emotion detection
+    result = emotion_detector(text_to_analyse)
+
+    if result.get("dominant_emotion") is None:
+        return "Invalid text! Please try again!"
+
+    # format the response string as per requirement
+    response_text = (
+        f"For the given statement, the system response is "
+        f"'anger': {result['anger']}, "
+        f"'disgust': {result['disgust']}, "
+        f"'fear': {result['fear']}, "
+        f"'joy': {result['joy']} and "
+        f"'sadness': {result['sadness']}. "
+        f"The dominant emotion is {result['dominant_emotion']}."
+    )
+
+    return response_text
+
 
 if __name__ == "__main__":
-    ''' This functions executes the flask app and deploys it on localhost:5000   '''
     app.run(host="0.0.0.0", port=5000)
